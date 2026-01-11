@@ -1,0 +1,14 @@
+name: vizdoom-dm
+channels:
+  - conda-forge
+  - pytorch
+dependencies:
+  - python=3.10
+  - numpy
+  - opencv
+  - pip
+  - pytorch
+  - torchvision
+  - cpuonly      
+  - pip:
+      - vizdoom
