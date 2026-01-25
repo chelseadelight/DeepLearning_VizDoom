@@ -101,11 +101,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--train', action='store_true', help='Train the model')
     parser.add_argument('--save', action='store_true', help='Save the model and generate videos')
+    parser.add_argument('--use-cpu', action='store_true', help='Use cpu only')
     parser.add_argument('--experiment', type=str, default=envOrVal("EXPERIMENT", "default"), help='Experiment name')
     parser.add_argument('--seconds', type=int, default=envOrVal("TRAINING_SECONDS", 3600), help='Training duration in seconds')
     parser.add_argument('--workers', type=int, default=envOrVal("WORKERS", 8), help='Number of workers')
     parser.add_argument('--worker-envs', type=int, default=envOrVal("WORKER_ENVS", 4), help='Number of environments per worker')
     parser.add_argument('--model', type=str, default=envOrVal("MODEL", "default"), help='Model architecture to use (default or custom)')
+    parser.add_argument('--architecture', type=str, default=envOrVal("ARCHITECTURE", "baseline"), choices=["baseline", "gru"], help='Architecture to use')
     args = parser.parse_args()
 
 
@@ -121,22 +123,53 @@ if __name__ == '__main__':
     if exp == "default":
         exp = env
 
+    exp = f"{exp}_{args.model}_{args.architecture}"
+
     if args.train:
-        cfg = parse_vizdoom_cfg(
-            argv=[
-                f"--env={env}", 
-                f"--experiment={exp}",
-                f"--num_workers={args.workers}",
-                f"--num_envs_per_worker={args.worker_envs}",
-                f"--train_for_seconds={args.seconds}",
-                "--env_frameskip=4",
-                "--num_policies=1",
+        argv=[
+            f"--env={env}",
+            f"--experiment={exp}",
+            f"--num_workers={args.workers}",
+            f"--num_envs_per_worker={args.worker_envs}",
+            f"--train_for_seconds={args.seconds}",
+            "--env_frameskip=4",
+            "--num_policies=1",
+        ]
+
+        # allows checking training behavior without CUDA
+        # not recommended to be used for full training runs
+        if args.use_cpu:
+            argv += [
+                "--device=cpu"
             ]
-        )
+
+        if args.architecture == "gru":
+            argv += [
+                "--use_rnn=True",
+                "--rnn_type=gru",
+                "--rnn_size=256",
+                "--rnn_num_layers=1",
+            ]
+
+        cfg = parse_vizdoom_cfg(argv=argv)
         status = run_rl(cfg)
 
     if args.save:
-        cfg = parse_vizdoom_cfg(
-            argv=[f"--env={env}", f"--experiment={exp}", "--num_workers=1", "--save_video", "--no_render", "--max_num_episodes=10"], evaluation=True
-        )
+        argv=[
+            f"--env={env}",
+            f"--experiment={exp}",
+            "--num_workers=1",
+            "--save_video",
+            "--no_render",
+            "--max_num_episodes=10"
+        ]
+
+        # allows checking evaluation behavior without CUDA
+        # not recommended to be used for full evaluation runs
+        if args.use_cpu:
+            argv += [
+                "--device=cpu"
+            ]
+
+        cfg = parse_vizdoom_cfg(argv=argv, evaluation=True)
         status = enjoy(cfg)
