@@ -1,5 +1,6 @@
 # Pycharm Config
 .idea/
+**/__pycache__/
 
 # vizdoom
 _vizdoom.ini
