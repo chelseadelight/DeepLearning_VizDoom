@@ -1,2 +1,14 @@
 # Pycharm Config
 .idea/
+
+# vizdoom
+_vizdoom.ini
+
+# sample factory
+train_dir/
+
+# direnv
+.envrc
+
+
+

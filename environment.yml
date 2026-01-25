@@ -12,3 +12,4 @@ dependencies:
   - cpuonly      
   - pip:
       - vizdoom
+      - git+https://github.com/alex-petrenko/sample-factory.git@master
