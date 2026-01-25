@@ -15,17 +15,22 @@ from sf_examples.vizdoom.doom.doom_params import add_doom_env_args, doom_overrid
 from sf_examples.vizdoom.doom.doom_utils import ADDITIONAL_INPUT, BOTS_REWARD_SHAPING, DOOM_ENVS, DoomSpec, doom_action_space_full_discretized, make_doom_env_from_spec
 from sf_examples.vizdoom.doom.wrappers.exploration import ExplorationWrapper
 
+from .models.custom_encoder import make_custom_vizdoom_encoder
+
+# Helper function to get absolute path to scenario files
 def abs_scenario(scenario_file):
     """Get absolute path to a scenario file located in the 'scenarios' directory."""
     current_dir = os.path.dirname(os.path.abspath(__file__))
     scenarios_dir = os.path.join(current_dir, 'scenarios')
     return os.path.join(scenarios_dir, scenario_file)
 
+# Exploration wrapper configuration
 EXPLORATION_REWARD = (
     ExplorationWrapper,
     {}
 )
 
+# Custom ViZDoom environments with exploration and reward shaping
 CUSTOM_ENVS = [
     DoomSpec(
         "custom_doom_dm_explore",
@@ -37,6 +42,12 @@ CUSTOM_ENVS = [
         num_bots=7,
         extra_wrappers=[ADDITIONAL_INPUT, EXPLORATION_REWARD, BOTS_REWARD_SHAPING],
     )
+]
+
+# List of available model architectures
+MODELS = [
+    ("default", make_vizdoom_encoder),
+    ("custom", make_custom_vizdoom_encoder),
 ]
 
 # Registers all the ViZDoom environments
@@ -52,13 +63,14 @@ def register_vizdoom_envs():
 
 # Sample Factory allows the registration of a custom Neural Network architecture
 # See https://github.com/alex-petrenko/sample-factory/blob/master/sf_examples/vizdoom/doom/doom_model.py for more details
-def register_vizdoom_models():
+def register_vizdoom_models(model_name="default"):
+    for name, factory in MODELS:
+        if name == model_name:
+            global_model_factory().register_encoder_factory(factory)
+            return
+    # If the specified model_name is not found, register the default model
     global_model_factory().register_encoder_factory(make_vizdoom_encoder)
 
-
-def register_vizdoom_components():
-    register_vizdoom_envs()
-    register_vizdoom_models()
 
 
 # parse the command line args and create a config
@@ -93,15 +105,16 @@ if __name__ == '__main__':
     parser.add_argument('--seconds', type=int, default=envOrVal("TRAINING_SECONDS", 3600), help='Training duration in seconds')
     parser.add_argument('--workers', type=int, default=envOrVal("WORKERS", 8), help='Number of workers')
     parser.add_argument('--worker-envs', type=int, default=envOrVal("WORKER_ENVS", 4), help='Number of environments per worker')
+    parser.add_argument('--model', type=str, default=envOrVal("MODEL", "default"), help='Model architecture to use (default or custom)')
     args = parser.parse_args()
 
 
     # Required for Windows multiprocessing
     freeze_support() 
 
-    ## Start the training, this should take around 15 minutes
-    register_vizdoom_components()
-    
+    # Register ViZDoom environments and models
+    register_vizdoom_envs()
+    register_vizdoom_models(model_name=args.model)
 
     env = "custom_doom_dm_explore"
     exp = args.experiment
