@@ -1,6 +1,6 @@
 # DeepLearning_VizDoom
 
-# Quick Start
+# Quick Start (Local)
 
 ```
 conda env create -f environment.yml
@@ -14,6 +14,21 @@ python -m project.main --save
 
 # start tensorflow dashboard (can be run while training)
 tensorboard --logdir=./train_dir --port=6006
+```
+
+# Quick Start (Slurm HPC)
+```
+# create the conda environment
+cd slurm
+./setup.sh
+
+# run training as a slurm job
+# optional flags can be appended
+sbatch train.sh \
+--train \
+--architecture=gru \
+--workers=16 \
+--worker-envs=16
 ```
 
 # Custom Model Architectures
