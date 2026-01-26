@@ -142,6 +142,10 @@ if __name__ == '__main__':
             argv += [
                 "--device=cpu"
             ]
+        else:
+            argv += [
+                "--device=gpu"
+            ]
 
         if args.architecture == "gru":
             argv += [
