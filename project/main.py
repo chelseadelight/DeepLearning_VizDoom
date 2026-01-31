@@ -12,8 +12,10 @@ from sample_factory.enjoy import enjoy
 
 from sf_examples.vizdoom.doom.doom_model import make_vizdoom_encoder
 from sf_examples.vizdoom.doom.doom_params import add_doom_env_args, doom_override_defaults
-from sf_examples.vizdoom.doom.doom_utils import ADDITIONAL_INPUT, BOTS_REWARD_SHAPING, DOOM_ENVS, DoomSpec, doom_action_space_full_discretized, make_doom_env_from_spec
+from sf_examples.vizdoom.doom.doom_utils import ADDITIONAL_INPUT, BOTS_REWARD_SHAPING, DEATHMATCH_REWARD_SHAPING, DOOM_ENVS, DoomGatheringRewardShaping, DoomSpec, doom_action_space_basic, doom_action_space_full_discretized, make_doom_env_from_spec
 from sf_examples.vizdoom.doom.wrappers.exploration import ExplorationWrapper
+
+from project.wrappers.hide_and_seek import HideAndSeekWrapper
 
 from .models.custom_encoder import make_custom_vizdoom_encoder
 
@@ -30,6 +32,12 @@ EXPLORATION_REWARD = (
     {}
 )
 
+# Hide and Seek wrapper configuration
+HIDE_AND_SEEK_WRAPPER = (
+    HideAndSeekWrapper,
+    {}
+)
+
 # Custom ViZDoom environments with exploration and reward shaping
 CUSTOM_ENVS = [
     DoomSpec(
@@ -41,6 +49,60 @@ CUSTOM_ENVS = [
         num_agents=1,
         num_bots=7,
         extra_wrappers=[ADDITIONAL_INPUT, EXPLORATION_REWARD, BOTS_REWARD_SHAPING],
+    ),
+    DoomSpec(
+        "custom_b4a4_dm",
+        abs_scenario("b4a4_dm.cfg"),
+        doom_action_space_full_discretized(with_use=True),
+        1.0,
+        int(1e9),
+        num_agents=4,
+        num_bots=4,
+        respawn_delay=2,
+        extra_wrappers=[ADDITIONAL_INPUT, DEATHMATCH_REWARD_SHAPING],
+    ),
+    DoomSpec(
+        "custom_b7a1_dm",
+        abs_scenario("b4a4_dm.cfg"),
+        doom_action_space_full_discretized(with_use=True),
+        1.0,
+        int(1e9),
+        num_agents=1,
+        num_bots=7,
+        respawn_delay=2,
+        extra_wrappers=[ADDITIONAL_INPUT, EXPLORATION_REWARD, DEATHMATCH_REWARD_SHAPING],
+    ),
+    DoomSpec(
+        "custom_health_gathering",
+        abs_scenario("health_gathering.cfg"),
+        doom_action_space_full_discretized(with_use=True),
+        1.0,
+        extra_wrappers=[ADDITIONAL_INPUT, (DoomGatheringRewardShaping, {})],
+    ),
+    DoomSpec(
+        "custom_way_home",
+        "my_way_home.cfg", 
+        doom_action_space_full_discretized(with_use=True), 
+        1.0,
+        extra_wrappers=[ADDITIONAL_INPUT],
+    ),
+    DoomSpec(
+        "forward_way_home",
+        abs_scenario("forward_way_home.cfg"),
+        doom_action_space_full_discretized(with_use=True), 
+        1.0,
+        extra_wrappers=[ADDITIONAL_INPUT],
+    ),
+    DoomSpec(
+        "doom_hide_and_seek",
+        abs_scenario("hide_and_seek.cfg"),
+        doom_action_space_full_discretized(with_use=True), 
+        1.0,
+        int(1e9),
+        num_agents=8,
+        num_bots=0,
+        respawn_delay=2,
+        extra_wrappers=[ADDITIONAL_INPUT, HIDE_AND_SEEK_WRAPPER],
     )
 ]
 
@@ -102,12 +164,15 @@ if __name__ == '__main__':
     parser.add_argument('--train', action='store_true', help='Train the model')
     parser.add_argument('--save', action='store_true', help='Save the model and generate videos')
     parser.add_argument('--use-cpu', action='store_true', help='Use cpu only')
+    parser.add_argument('--scenario', type=str, default=envOrVal("SCENARIO", "custom_b4a4_dm"), help='Scenario to use for training/evaluation')
     parser.add_argument('--experiment', type=str, default=envOrVal("EXPERIMENT", "default"), help='Experiment name')
     parser.add_argument('--seconds', type=int, default=envOrVal("TRAINING_SECONDS", 3600), help='Training duration in seconds')
+    parser.add_argument('--steps', type=intOrNone, default=envOrVal("TRAINING_STEPS", None), help='Training duration in environment steps')
     parser.add_argument('--workers', type=int, default=envOrVal("WORKERS", 8), help='Number of workers')
     parser.add_argument('--worker-envs', type=int, default=envOrVal("WORKER_ENVS", 4), help='Number of environments per worker')
     parser.add_argument('--model', type=str, default=envOrVal("MODEL", "default"), help='Model architecture to use (default or custom)')
     parser.add_argument('--architecture', type=str, default=envOrVal("ARCHITECTURE", "baseline"), choices=["baseline", "gru"], help='Architecture to use')
+    parser.add_argument('--policies', type=int, default=envOrVal("POLICIES", 1), help='Number of policies (for multi-agent scenarios)')
     args = parser.parse_args()
 
 
@@ -118,7 +183,7 @@ if __name__ == '__main__':
     register_vizdoom_envs()
     register_vizdoom_models(model_name=args.model)
 
-    env = "custom_doom_dm_explore"
+    env = args.scenario
     exp = args.experiment
     if exp == "default":
         exp = env
@@ -132,9 +197,14 @@ if __name__ == '__main__':
             f"--num_workers={args.workers}",
             f"--num_envs_per_worker={args.worker_envs}",
             f"--train_for_seconds={args.seconds}",
+            f"--num_policies={args.policies}",
             "--env_frameskip=4",
-            "--num_policies=1",
         ]
+
+        if args.steps is not None:
+            argv += [
+                f"--train_for_env_steps={args.steps}",
+            ]
 
         # allows checking training behavior without CUDA
         # not recommended to be used for full training runs
