@@ -50,11 +50,6 @@ python -m project.main --save --model custom_model
 To add custom ViZDoom environments, create a new `DoomSpec` instance in the `CUSTOM_ENVS` list located in `project/main.py`. You can use the existing environment specifications as templates. Make sure to import any necessary wrappers or configurations at the top of the file.
 
 Scenario files should be placed in the `project/scenarios` directory, again using existing files as templates.
-
-## TODO
-
-- Add functionality to select custom environments via command-line arguments.
-- Find out how `.wad` files are created.
  
 # Arguments
 
@@ -76,9 +71,3 @@ You can also set the following environment variables to customize the training a
 - `TRAINING_SECONDS`: Duration of training in seconds (default is `3600` seconds).
 - `WORKERS`: Number of parallel workers to use for training (default is `8`).
 - `WORKER_ENVS`: Number of environments per worker (default is `4`).
-
-# Open Issues
-
-- Seconds argument not working as expected. Model trains indefinitely regardless of the value provided.
-
-
